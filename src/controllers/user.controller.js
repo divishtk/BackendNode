@@ -5,22 +5,20 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { apiResponse } from "../utils/apiResponse.js";
 
 const registerUser = asyncHandler(async (req, resp) => {
-  const { fullname, email, username, password } = req.body;
-  console.log(email);
+  const { fullName, email, userName, password } = req.body;
 
-  // if(fullname === ""){
-  //   throw new apiErrors(400,"Full Name is required")
 
-  // }
+  console.log("Request Files:", req.files)
 
   if (
-    [fullname, email, username, password].some( (fields) => fields?.trim() === "" )) 
+    [fullName, email, userName, password].some( (fields) => fields?.trim() === "" )) 
     {
       throw new apiErrors(400,"All Fields required")
     }
 
-    const existedUser = User.findOne({
-      $or : [{ username }, { email }]
+    
+    const existedUser = await User.findOne({
+      $or : [{ userName }, { email }]
     })
 
     if(existedUser) throw new apiErrors(409,"User with email/username already exists");
@@ -32,17 +30,25 @@ const registerUser = asyncHandler(async (req, resp) => {
 
 
 
-   const coverImageLocalpath =  req.files?.coverImage[0]?.path;
+   //const coverImageLocalpath =  req.files?.coverImage[0]?.path;
+
+   let coverImageLocalpath;
+
+    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0){
+      coverImageLocalpath = req.files.coverImage[0].path;
+    }
+
    const coverImage = await uploadOnCloudinary(coverImageLocalpath);
+
 
  
     const user  = await User.create({
-      fullname,
+      fullName,
       avatar: avatar.url,
       coverImage:coverImage?.url || "",
       email,
       password,
-      username: username.toLowerCaswe()
+      userName: userName.toLowerCase()
     })
 
     const createdUserCheck = await User.findById(user._id).select(
@@ -53,15 +59,8 @@ const registerUser = asyncHandler(async (req, resp) => {
 
 
       return resp.status(201).json(
-        new apiResp(200,createdUserCheck,"User registered successully")
+        new apiResponse(200,createdUserCheck,"User registered successully")
       )
-      const apiResp = await apiResponse()
-
-
-
-  //   resp.status(200).json({
-  //     messaege: "OK",
-  //   });
 });
 
 export { registerUser };
