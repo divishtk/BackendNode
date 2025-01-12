@@ -9,7 +9,7 @@ const generateAcesssAndRefreshTokens = async (userID) => {
   try {
     const user = await User.findById(userID);
     const accessToken = user.generateAccessToken();
-    const refreshedToken = user.generateRefreshToken();
+    const refreshedToken = await user.generateRefreshToken();
 
     user.refreshedToken = refreshedToken;
     await user.save({ validateBeforeSave: false }); //for kickin values of mongo
@@ -110,6 +110,9 @@ const loginUser = asyncHandler(async (req, resp) => {
     user._id
   );
 
+  console.log("acc", accessToken);
+  console.log("ref", refreshedToken);
+
   const loggedInUser = await User.findById(user._id).select(
     "-password -refreshedToken"
   );
@@ -163,50 +166,61 @@ const logoutuser = asyncHandler(async (req, resp) => {
 });
 
 const refreshAccessToken = asyncHandler(async (req, resp) => {
- try {
-   const incomingRefreshToken =
-     req.cookies.refreshedToken || req.body.refreshedToken;
-   if (!incomingRefreshToken) {
-     throw new apiErrors(401, "Refresh token unauthorized");
-   }
- 
-   const decodedToken = jwt.verify(
-     incomingRefreshToken,
-     process.env.REFRESHED_TOKEN
-   );
-   const user = await User.findById(decodedToken?._id);
-   if (!user) {
-     throw new apiErrors(401, "Invalid refresh token");
-   }
- 
-   if (incomingRefreshToken !== user?.refreshedToken) {
-     throw new apiErrors(401, "Refresh token is expired or used");
-   }
- 
-   const cookieOptions = {
-     httpOnly: true,
-     secure : true
-   }
- 
-  const {accessToken, newrefreshedToken} = await generateAcesssAndRefreshTokens(user._id);
- 
-  return resp.status(200).
-  cookie('accessToken',accessToken,cookieOptions).
-  cookie('refreshedToken',newrefreshedToken,cookieOptions).
-  json(
-   new apiResponse(
-     200,
-     {
-       accessToken,
-       refreshedToken : newrefreshedToken
-     },
-     "Access Token Refreshed "
-   )
-  )
- } catch (error) {
-  throw new apiErrors(401,error?.message || "Invalid refresh token")
- }
+  try {
+    console.log("ree", req.cookies);
+    const incomingRefreshToken =
+      req.cookies.refreshedToken || req.body.refreshedToken;
 
+    console.log("incoming", incomingRefreshToken);
+
+    if (!incomingRefreshToken) {
+      throw new apiErrors(401, "Refresh token unauthorized");
+    }
+
+    const decodedToken = jwt.verify(
+      incomingRefreshToken,
+      process.env.REFRESHED_TOKEN
+    );
+
+    console.log("decoded refesh", decodedToken);
+
+    const user = await User.findById(decodedToken?._id);
+    if (!user) {
+      throw new apiErrors(401, "Invalid refresh token");
+    }
+
+    console.log("decoded  user", user);
+
+    if (incomingRefreshToken !== user?.refreshedToken) {
+      throw new apiErrors(401, "Refresh token is expired or used");
+    }
+
+    const cookieOptions = {
+      httpOnly: true,
+      secure: true,
+    };
+
+    const { accessToken, refreshedToken } =
+      await generateAcesssAndRefreshTokens(user._id);
+    console.log("new access", accessToken);
+
+    return resp
+      .status(200)
+      .cookie("accessToken", accessToken, cookieOptions)
+      .cookie("refreshedToken", refreshedToken, cookieOptions)
+      .json(
+        new apiResponse(
+          200,
+          {
+            accessToken,
+            refreshedToken: refreshedToken,
+          },
+          "Access Token Refreshed"
+        )
+      );
+  } catch (error) {
+    throw new apiErrors(401, error?.message || "Invalid refresh token");
+  }
 });
 
 export { registerUser, loginUser, logoutuser, refreshAccessToken };
