@@ -27,7 +27,7 @@ const registerUser = asyncHandler(async (req, resp) => {
   const { fullName, email, userName, password } = req.body;
 
   //console.log("Request Files:", req.files);
-
+  
   if (
     [fullName, email, userName, password].some(
       (fields) => fields?.trim() === ""
@@ -171,8 +171,6 @@ const refreshAccessToken = asyncHandler(async (req, resp) => {
     const incomingRefreshToken =
       req.cookies.refreshedToken || req.body.refreshedToken;
 
-    console.log("incoming", incomingRefreshToken);
-
     if (!incomingRefreshToken) {
       throw new apiErrors(401, "Refresh token unauthorized");
     }
@@ -189,8 +187,6 @@ const refreshAccessToken = asyncHandler(async (req, resp) => {
       throw new apiErrors(401, "Invalid refresh token");
     }
 
-    console.log("decoded  user", user);
-
     if (incomingRefreshToken !== user?.refreshedToken) {
       throw new apiErrors(401, "Refresh token is expired or used");
     }
@@ -202,7 +198,6 @@ const refreshAccessToken = asyncHandler(async (req, resp) => {
 
     const { accessToken, refreshedToken } =
       await generateAcesssAndRefreshTokens(user._id);
-    console.log("new access", accessToken);
 
     return resp
       .status(200)
