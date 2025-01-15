@@ -110,8 +110,6 @@ const loginUser = asyncHandler(async (req, resp) => {
     user._id
   );
 
-  console.log("acc", accessToken);
-  console.log("ref", refreshedToken);
 
   const loggedInUser = await User.findById(user._id).select(
     "-password -refreshedToken"
@@ -219,18 +217,25 @@ const refreshAccessToken = asyncHandler(async (req, resp) => {
 });
 
 const changeCurrentPassword = asyncHandler(async (req, resp) => {
-  const { oldPassword, newpassword } = req.body;
-  const user = await User.findById(req.user?._id);
-  const isPassCorrect = await user.isPasswordCorrect(oldPassword);
-  if (!isPassCorrect) {
-    throw new apiErrors(400, "Invalid Password");
-  }
-  user.password = newpassword;
-  await user.save({ validateBeforeSave: false });
+  try {
+    const { oldPassword, newpassword } = req.body;
 
-  return resp
-    .status(200)
-    .json(new apiResponse(200, {}, "Password changed Successfully"));
+    const user = await User.findById(req.user?._id);
+    const isPassCorrect = await user.isPasswordCorrect(oldPassword);
+    if (!isPassCorrect) {
+      throw new apiErrors(400, "Invalid Password");
+    }
+    user.password = newpassword;
+    await user.save({ validateBeforeSave: false });
+  
+    return resp
+      .status(200)
+      .json(new apiResponse(200, {}, "Password changed Successfully"));
+  } catch (error) {
+    return resp
+      .status(401)
+      .json(new apiErrors(401, error?.message,"Something went wrong" ));
+  }
 });
 
 const getCurrentUser = asyncHandler(async (req, resp) => {
@@ -276,15 +281,16 @@ const updateUserAvatar = asyncHandler(async (req, resp) => {
   }
 
   const avatar = await uploadOnCloudinary(avatarLocalPath);
-  if(avatar.url){
+  if(avatar.path){
       throw new apiErrors(400, "Error while uploading avatar");
   }
+  console.log('req',req.user)
 
   const user = await User.findByIdAndUpdate(
     req.user?._id,
     {
       $set:{
-        avatar : avatar.url
+        avatar : avatar.path
       }
     },
     {
@@ -306,7 +312,7 @@ const updateUserCoverImage = asyncHandler(async (req, resp) => {
   }
 
   const coverImage = await uploadOnCloudinary(coverImageLocalPath);
-  if(coverImage.url){
+  if(coverImage.path){
       throw new apiErrors(400, "Error while uploading avatar");
   }
 
@@ -314,7 +320,7 @@ const updateUserCoverImage = asyncHandler(async (req, resp) => {
     req.user?._id,
     {
       $set:{
-        coverImage : coverImage.url
+        coverImage : coverImage.path
       }
     },
     {
